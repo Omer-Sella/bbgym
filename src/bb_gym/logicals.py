@@ -3,7 +3,7 @@ Compute the logical operators of a CSS code given its stabilizer generators.
 Thanks to Dr. Pavel Panteleev for clarifying comments on computing logicals and checking the residual error 
 
 """
-import bbGym.funWithMatrices as funWithMatrices
+from bb_gym import gf2Algebra
 import copy
 import numpy as np
 
@@ -36,18 +36,18 @@ def computeLogicals(stabilizerGeneratorsX, stabilizerGeneratorsZ):
     """
     
     # Step 1: Switch to reduced form: the stabilizer generators
-    stabilizerGeneratorsXReduced, stabilizerGeneratorsXInverse, stabilizerGeneratorsXrank = funWithMatrices.binaryGaussianEliminationOnRows(copy.copy(stabilizerGeneratorsX))
-    stabilizerGeneratorsZReduced, stabilizerGeneratorsZInverse, stabilizerGeneratorsZrank = funWithMatrices.binaryGaussianEliminationOnRows(copy.copy(stabilizerGeneratorsZ))
+    stabilizerGeneratorsXReduced, stabilizerGeneratorsXInverse, stabilizerGeneratorsXrank = gf2Algebra.binaryGaussianEliminationOnRows(copy.copy(stabilizerGeneratorsX))
+    stabilizerGeneratorsZReduced, stabilizerGeneratorsZInverse, stabilizerGeneratorsZrank = gf2Algebra.binaryGaussianEliminationOnRows(copy.copy(stabilizerGeneratorsZ))
 
     # Step 2: Find a basis to the null space of each (reduced) stabiliser matrix. The null space of the Z stabilisers are X operators, the null space of the X stabilizers are Z operators.
-    logicalOperatorsX = funWithMatrices.solveHomogenicBinaryLinearSystem(stabilizerGeneratorsZReduced)
-    logicalOperatorsZ = funWithMatrices.solveHomogenicBinaryLinearSystem(stabilizerGeneratorsXReduced)
+    logicalOperatorsX = gf2Algebra.solveHomogenicBinaryLinearSystem(stabilizerGeneratorsZReduced)
+    logicalOperatorsZ = gf2Algebra.solveHomogenicBinaryLinearSystem(stabilizerGeneratorsXReduced)
 
     # Step 3: Pick only the operators that are linearly independant of the stabilisers - this time we are checking the X operators that are linearly independent of the X stabilizers, and Z operators independent of the Z stabilizers. 
     newLogicalOperatorsX = []
     for i in range(logicalOperatorsX.shape[0]):
         testMatrix = np.vstack((stabilizerGeneratorsXReduced, logicalOperatorsX[i, :]))
-        _, _, testRank = funWithMatrices.binaryGaussianEliminationOnRows(copy.copy(testMatrix))
+        _, _, testRank = gf2Algebra.binaryGaussianEliminationOnRows(copy.copy(testMatrix))
         if testRank > stabilizerGeneratorsXrank:
             # This row is in the span of the X stabilizers, remove it
             newLogicalOperatorsX.append(logicalOperatorsX[i,:])
@@ -55,7 +55,7 @@ def computeLogicals(stabilizerGeneratorsX, stabilizerGeneratorsZ):
     newLogicalOperatorsZ = []
     for i in range(logicalOperatorsZ.shape[0]):
         testMatrix = np.vstack((stabilizerGeneratorsZReduced, logicalOperatorsZ[i, :]))
-        _, _, testRank = funWithMatrices.binaryGaussianEliminationOnRows(copy.copy(testMatrix))
+        _, _, testRank = gf2Algebra.binaryGaussianEliminationOnRows(copy.copy(testMatrix))
         if testRank > stabilizerGeneratorsZrank:
             # This row is in the span of the stabilizers, remove it
             newLogicalOperatorsZ.append(logicalOperatorsZ[i, :])
@@ -68,6 +68,6 @@ def calculateCodeDimension(Hx, Hz):
         print(f"Column dimensions of Hx and Hz should be the same, instead they are {Hx.shape[1]} and {Hz.shape[1]}.")
         raise ValueError
     else:
-        _, _, rankHx = funWithMatrices.binaryGaussianEliminationOnRows(copy.copy(Hx))
-        _, _, rankHz = funWithMatrices.binaryGaussianEliminationOnRows(copy.copy(Hz))
+        _, _, rankHx = gf2Algebra.binaryGaussianEliminationOnRows(copy.copy(Hx))
+        _, _, rankHz = gf2Algebra.binaryGaussianEliminationOnRows(copy.copy(Hz))
         return Hx.shape[1] - rankHx - rankHz

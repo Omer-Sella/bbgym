@@ -1,12 +1,12 @@
 import numpy as np
-from bbGym.gf4 import integerToDualBinary #noqa
-from bbGym.logicals import computeLogicals #noqa
+from bb_gym.gf4 import integerToDualBinary #noqa
+from bb_gym.logicals import computeLogicals #noqa
 #from bbGym.minSum import ldpcDecoder
 #from bbGym.memBP import decode
 from scipy.integrate import trapezoid
 import time
 
-from qecc.polynomialCodes import A1_HX, A1_HZ
+from bb_gym.polynomialCodes import A1_HX, A1_HZ
 LDPC_INT_DATA_TYPE = np.int32
 FLOAT_DATA_TYPE_UTILS = np.float32
 GEOMETRIC5_ERROR_RANGE = np.geomspace(0.001, 0.1, 5)
@@ -56,6 +56,8 @@ Just a reminder:
 [[360,12,≤24]] 1/60     30,6 x9+y+y2 y3+x25+x26
 [[756,16,≤34]] 1/95     21,18 x3+y10+y17 y5+x3+x19
 """
+
+
 def minSumEvaluateCode(numberOfTransmissions, seed, errorRange, numberOfIterations, H):
     """
     parameters
@@ -280,7 +282,7 @@ if __name__ == "__main__":
     # minSumEvaluateCode(numberOfTransmissions, seed, errorRange, numberOfIterations, H)
     # memBPEvaluateCode(numberOfTransmissions, seed, errorRange, numberOfIterations, H)
     # from bbGym.utils import decoderEvaluator
-    from bbGym.polynomialCodes import A1_HX, A1_HZ, bbCodes
+    from bb_gym.polynomialCodes import A1_HX, A1_HZ, bbCodes
     # from qecc.minSum import ldpcDecoderWrapper
     # errorRange = np.linspace(10**-4, 10**-1, 10)
     

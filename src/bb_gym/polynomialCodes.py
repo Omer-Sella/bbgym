@@ -2,12 +2,9 @@
 This file implements codes from the paper "Degenerate Quantum LDPC Codes With Good Finite Length
 Performance" by Pavel Panteleev and Gleb Kalachev
 
-For polynomial arithmetic, we use the reedSolomon project: https://github.com/Omer-Sella/reedSolomon
-or:
-git@github.com:Omer-Sella/reedSolomon.git
+For polynomial arithmetic, I used the Reed Solomon code to verify the polynomials given in the paper, but I left it commented 
+https://github.com/Omer-Sella/reedSolomon
 There is no real need for it if you're just using the matrices.
-I used the Reed Solomon code to verify the polynomials given in the paper, but I left it commented.
-
 Then set an environment variable REEDSOLOMON to the root directory of the project.
 """
 from scipy.linalg import circulant
@@ -37,25 +34,16 @@ A1_HZ = np.hstack((A1_B.transpose(), A1_A.transpose()))
 codes["A1_HX"] = A1_HX
 codes["A1_HZ"] = A1_HZ
 a_254_28.reverse()
-#a = polynomial(a_254_28)
-#a.printValues()
-b_254_28.reverse()
-#b = polynomial(b_254_28)
-#b.printValues()
+b_254_28.reverse() # BUG: Why is there another reverse here ?
 
-#A2 [[126, 28, 8]] code (l = 63).
-#a(x) = 1 + x + x14 + x16 + x22,
+
 a_126_28_8 = [1, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 0, 0, 0, 1]
-a_126_28_8_padded = a_126_28_8 + [0]*(63 - len(a_126_28_8))
+a_126_28_8_padded = a_126_28_8 + [0] * (63 - len(a_126_28_8))
 A2_A = circulant(a_126_28_8_padded).transpose()
 #b(x) = 1 + x3 + x13 + x20 + x42.
 b_126_28_8 = [1, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1]
 b_126_28_8_padded = b_126_28_8 + [0] * (63 - len(b_126_28_8))
 A2_B = circulant(b_126_28_8_padded).transpose()
-#a_126_28_8.reverse()
-#b_126_28_8.reverse()
-#b = polynomial(b_126_28_8)
-#b.printValues()
 A2_HX = np.hstack((A2_A, A2_B))
 A2_HZ = np.hstack((A2_B.transpose(), A2_A.transpose()))
 codes["A2_HX"] = A2_HX
@@ -63,19 +51,13 @@ codes["A2_HZ"] = A2_HZ
 # A3) [[48, 6, 8]] code (l = 24).
 # a(x) = 1 + x2 + x8 + x15,
 a_48_6_8 = [1,0,1,0,0,0,0,0,1,0,0,0,0,0,0,1]
-a_48_6_8_padded = a_48_6_8 + [0]*(24 - len(a_48_6_8))
+a_48_6_8_padded = a_48_6_8 + [0] * (24 - len(a_48_6_8))
 A3_A = circulant(a_48_6_8_padded).transpose()
 # b(x) = 1 + x2 + x12 + x17.
-b_48_6_8 = [1,0,1] + [0]*9 + [1] + [0]*4 + [1]
-b_48_6_8_padded = b_48_6_8 + [0]*(24 - len(b_48_6_8))
+b_48_6_8 = [1, 0, 1] + [0] * 9 + [1] + [0]*4 + [1]
+b_48_6_8_padded = b_48_6_8 + [0] * (24 - len(b_48_6_8))
 A3_B = circulant(b_48_6_8_padded).transpose()
 
-#a_48_6_8.reverse()
-#a = polynomial(a_48_6_8)
-#a.printValues()
-#b_48_6_8.reverse()
-#b = polynomial(b_48_6_8)
-#b.printValues()
 A3_HX = np.hstack((A3_A, A3_B))
 A3_HZ = np.hstack((A3_B.transpose(), A3_A.transpose()))
 codes["A3_HX"] = A3_HX
@@ -95,14 +77,7 @@ A4_HZ = np.hstack((A4_B.transpose(), A4_A.transpose()))
 codes["A4_HX"] = A4_HX
 codes["A4_HZ"] = A4_HZ
 b_46_2_9.reverse()
-#b_46_2_9X = polynomial(b_46_2_9)
 a_46_2_9.reverse()
-#a_46_2_9X = polynomial(a_46_2_9)
-#a.printValues()
-
-#b_46_2_9.reverse()  
-#b = polynomial(b_46_2_9)
-#b.printValues()
 
 # A5) [[180, 10, d]] code (l = 90), 15 <= d <= 18.
 # a(x) = 1 + x28 + x80 + x89,
@@ -118,13 +93,6 @@ A5_HX = np.hstack((A5_A, A5_B))
 A5_HZ = np.hstack((A5_B.transpose(), A5_A.transpose()))
 codes["A5_HX"] = A5_HX
 codes["A5_HZ"] =  A5_HZ
-#a_180_10.reverse()
-#a = polynomial(a_180_10)
-#a.printValues()
-
-#b_180_10.reverse()
-#b = polynomial(b_180_10)     
-#b.printValues()
 
 #A6 [[900, 50, 15]] code (l = 450).
 # a(x) = 1 + x97 + x372 + x425,
@@ -140,13 +108,6 @@ A6_HX = np.hstack((A6_A, A6_B))
 A6_HZ = np.hstack((A6_B.transpose(), A6_A.transpose()))
 codes["A6_HX"] = A6_HX
 codes["A6_HZ"] = A6_HZ
-#a_900_50_15.reverse()    
-#a = polynomial(a_900_50_15)
-#a.printValues()
-
-#b_900_50_15.reverse()
-#b = polynomial(b_900_50_15)
-#b.printValues()
 
 """
 Bivariate Bicycle codes from High-threshold and low-overhead fault-tolerant quantum memory
@@ -220,7 +181,7 @@ def generateBicycleCode(l, m, aX, aY, bX, bY):
      
 aX_72_12_6 = [3]
 aY_72_12_6 = [1, 2]
-bX_72_12_6 = [1,2]
+bX_72_12_6 = [1, 2]
 bY_72_12_6 = [3]
 H_x_72_12_6, H_z_72_12_6 = generateBicycleCode(6, 6, aX_72_12_6, aY_72_12_6, bX_72_12_6, bY_72_12_6)
 codes["Hx_72_12_6"] = H_x_72_12_6

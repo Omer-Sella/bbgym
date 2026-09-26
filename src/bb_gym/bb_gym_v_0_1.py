@@ -2,16 +2,16 @@
 import numpy as np
 import gymnasium as gym
 from gymnasium import spaces
-from polynomialCodes import generateABmatrices, bicycleCodeFromAB
-from bbGym.logicals import calculateCodeDimension
-from bbGym.gf4 import integerToDualBinary
+from bb_gym.polynomialCodes import generateABmatrices, bicycleCodeFromAB
+from bb_gym.logicals import calculateCodeDimension, computeLogicals
+from bb_gym.gf4 import integerToDualBinary
+from bb_gym.utils import calculateRewardFromSamples
 from ldpc import BpOsdDecoder #noqa
-from bbGym.logicals import computeLogicals
 import json
 import os
 import platform
 from datetime import datetime, timezone
-from bbGym.utils import calculateRewardFromSamples
+
 
 INT_DATA_TYPE = np.int16
 
@@ -45,6 +45,9 @@ class bicycleBivariateCodeEnvironment(gym.Env):
                  stepsLimit = 1000000, # Some large value to maintain legacy, but should be set wisely !
                  ):
         
+        if resetType not in ["random3", "zero"]:
+            raise ValueError(f"Not implemented for reset type {resetType}")
+
         self.resetType = resetType
         self.episodeStepsLimit = stepsLimit
         self.numberOfSteps = 0
@@ -54,18 +57,19 @@ class bicycleBivariateCodeEnvironment(gym.Env):
         self.minimumNumberOfLogicalQubits = minimumNumberOfLogicalQubits
         self.numberOfIterations = numberOfIterations
         self.numberOfSamples = numberOfSamples
-        self.ms_scaling_factor = 0.625
+        self.ms_scaling_factor = 0.625 # This is a value used in several papers, including Pavel's. We can experiment / expose it for follow up work
         self._l = l
         self._m = m
         self.seed = seed # Omer: WARNING ! The assumption is that either on init, or later in reset, or parallelEnv or collector will set a seed.
         self.errorRange = errorRange
         self.bitFlipping = bitFlipping
+        # Error range safety - In previous work I used error range interchangeably, but this changes the sign of the reward, and we don't want special handling every reward calculation, so it's handled once at init
         if any(a >= b for a, b in zip(errorRange, errorRange[1:])):
             raise ValueError(
                 f"errorRange must be strictly increasing (e.g. [0.001, 0.01, 0.1]); got {list(errorRange)}"
             )
         
-        # Since x=Sℓ⊗Im and y=Iℓ⊗Sm we have x^l = y^m = I_{l*m}, so aX, bX terms over l wrap around using x^l = 1 and
+        # Recall that Since x=Sℓ⊗Im and y=Iℓ⊗Sm we have x^l = y^m = I_{l*m}, so aX, bX terms over l wrap around using x^l = 1 and
         # aY,bY terms higher than m wrap around as y^m = 1
         # The action space is a flat array containing containing actions [aX + 1,bX + 1,aY +1 ,bY + 1] in that order. +1 because there is a no op bit.
         
@@ -115,17 +119,20 @@ class bicycleBivariateCodeEnvironment(gym.Env):
                             "k"     :       np.array([self.numberOfLogicalQubits], dtype=np.float32),
                         }
         else:
+            # Legacy mode, where we only train an MLP. To be removed in a later release.
             observation = np.concatenate([self.A, self.B]).flatten().astype(np.int8)
         return observation
     
     def reset(self, seed=None, options = None):
         if seed is None:
-            self.seed = self.seed + 1
+            self.seed = self.seed + 1 # TODO: This is not a good handling of seed promotion. +1 might mean that if you have two environments, and the other one gets this one's seed + 10, then after 10 resets they are correlated. Instead we should use something like np.randint(self.seed), in which case two environments will corrolate only in a collision
         else:
             self.seed = seed
         super().reset(seed = self.seed)
 
+        # Reset the number of steps that were made to 0
         self.numberOfSteps = 0
+
         self.aX = self.aX * 0
         self.aY = self.aY * 0
         self.bX = self.bX * 0
@@ -136,12 +143,13 @@ class bicycleBivariateCodeEnvironment(gym.Env):
             for p in [self.aX, self.aY, self.bX, self.bY]:
                 numberOfNonZero = self.np_random.integers(0, 4)
                 p[self.np_random.choice(len(p), size = numberOfNonZero, replace = False)] = 1
-        elif self.resetType == "zero":
-            pass
-        else:
-            raise ValueError(f"Not implemented for reset type {self.resetType}")
+        # So we are in self.resetType == "zero"
+            # In zero reset we take the zero polynomials. This is a legacy mode and should be removed in future release.
+        #    pass
+        #else:
+        #    raise ValueError(f"Not implemented for reset type {self.resetType}") #Omer: Moved this to init, no sense in checking this every reset.
         
-        self.A, self.B = generateABmatrices(self._l, self._m, # 
+        self.A, self.B = generateABmatrices(self._l, self._m,
                                             np.where(self.aX != 0)[0],
                                             np.where(self.aY != 0)[0],
                                             np.where(self.bX != 0)[0],
@@ -150,14 +158,13 @@ class bicycleBivariateCodeEnvironment(gym.Env):
         self.Hx, self.Hz = bicycleCodeFromAB(self.A, self.B)
         self.numberOfLogicalQubits = calculateCodeDimension(self.Hx, self.Hz)
         observation = self._getObservation()
-        # Reset the number of steps that were made to 0
         info = {}
         return observation, info
     
     def step(self, action):
         # super().step(action)
         # Unpack action from flat action
-        actionCopy = np.array(action, dtype = INT_DATA_TYPE, copy = True) # This takes care of two things: 
+        actionCopy = np.array(action, dtype = INT_DATA_TYPE, copy = True) # The copy takes care of two things: 
                                                                           # 1. We are about to XOR the action from the policy 
                                                                           # (which is float data type) with an int. 
                                                                           # 2. We are about to assign a slice of the action to an internal polynomial, 
@@ -181,10 +188,10 @@ class bicycleBivariateCodeEnvironment(gym.Env):
             self.aY = aYAction[0:-1]
             self.bY = bYAction[0:-1]
         self.numberOfSteps += 1
-        self.A, self.B = generateABmatrices(self._l, self._m, 
-                                            np.where(self.aX != 0)[0], 
-                                            np.where(self.aY != 0)[0], 
-                                            np.where(self.bX != 0)[0], 
+        self.A, self.B = generateABmatrices(self._l, self._m,
+                                            np.where(self.aX != 0)[0],
+                                            np.where(self.aY != 0)[0],
+                                            np.where(self.bX != 0)[0],
                                             np.where(self.bY != 0)[0])
 
         self.Hx, self.Hz = bicycleCodeFromAB(self.A, self.B)
@@ -192,12 +199,13 @@ class bicycleBivariateCodeEnvironment(gym.Env):
         # Omer: Now we check that the resulting code admits the necessary logical qubits
         self.numberOfLogicalQubits = calculateCodeDimension(self.Hx, self.Hz)
         if self.numberOfLogicalQubits >= self.minimumNumberOfLogicalQubits:
+            # We are promoting the seed to make sure that two monte carlo evalauations are independent WITHIN the same reset cycle
             self.seed = self.seed + 1 # Omer: There is a bug hiding here - the seed of this environment might overlap another environment if promoted using +1. Right now I'm avoiding this using bookkeeping of random seeds, but consider changing this to np.randint(self.seed).
             logicalErrorRate = self.decoderEvaluation(self.seed)
-            reward = calculateRewardFromSamples(logicalErrorCount=logicalErrorRate, 
-                                                numberOfSamples=self.numberOfSamples, 
-                                                errorRange=self.errorRange, 
-                                                l = self._l, m = self._m, 
+            reward = calculateRewardFromSamples(logicalErrorCount=logicalErrorRate,
+                                                numberOfSamples=self.numberOfSamples,
+                                                errorRange=self.errorRange,
+                                                l = self._l, m = self._m,
                                                 rewardEngineering=self.rewardEngineering)
         else:
             reward = (self.numberOfLogicalQubits - self.minimumNumberOfLogicalQubits) / self.minimumNumberOfLogicalQubits
@@ -215,7 +223,7 @@ class bicycleBivariateCodeEnvironment(gym.Env):
 
     def decoderEvaluation(self, seed):  
         # Note that the decoder evaluation is hard-coded here, but there is an option to plug in a different decoder (that's the whole point of the paper - fix the decoder, learn the code).
-        localRandom = np.random.RandomState(seed) 
+        localRandom = np.random.RandomState(seed)
         logicalX, logicalZ = computeLogicals(self.Hx, self.Hz)
 
         bpDecoderHx = BpOsdDecoder(self.Hx, # This is the X stabilisers parity check matrix
@@ -272,6 +280,7 @@ class bicycleBivariateCodeEnvironment(gym.Env):
         return logicalErrorRate + decoderFailure # I removed the division /self.numberOfSamples this is now done when calculating the reward.
 
     def getSeed(self):
+        # TODO: I need to depecate this function, it was only for debug purposes and isn't used. I needed it since Gymnasium didn't allow me access to check the seed.
         return self.seed
 
 
@@ -319,10 +328,10 @@ if __name__ == "__main__":
     # Check the environment works with GymEnv
     from torchrl.envs.libs.gym import GymEnv
     from torchrl.envs.utils import check_env_specs
-    base_env = GymEnv("qecc/bbcode-ldpc-v0", l = 6, m = 6, errorRange = np.linspace(0.0001, 0.1, 10), minimumNumberOfLogicalQubits = 6)
+    base_env = GymEnv("bb_gym/bbcode-ldpc-v0", l = 6, m = 6, errorRange = np.linspace(0.0001, 0.1, 10), minimumNumberOfLogicalQubits = 6)
 
     check_env_specs(base_env)
-    env = gym.make('qecc/bbcode-ldpc-v0', l = 6, m = 6, errorRange = np.linspace(0.0001, 0.1, 10), minimumNumberOfLogicalQubits = 6, bitFlipping = False)    
+    env = gym.make('bb_gym/bbcode-ldpc-v0', l = 6, m = 6, errorRange = np.linspace(0.0001, 0.1, 10), minimumNumberOfLogicalQubits = 6, bitFlipping = False)    
     env.reset()
     print(env.action_space.shape)
     # print(env.unwrapped.flatObservationSize)

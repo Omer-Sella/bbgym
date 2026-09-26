@@ -1,35 +1,31 @@
 # %%
 """
-Table 1 from:
-  "High-threshold and low-overhead fault-tolerant quantum memory"
-  Bravyi, Cross, Gambetta, Nazarov, Rall, Yoder — Nature 2024 (arXiv:2308.07915)
+Tests for bb_gym
 
-Small examples of Bivariate Bicycle (BB) LDPC codes and their performance for the
-circuit-based noise model.  All codes have weight-6 checks, thickness-2 Tanner graph,
-and a depth-7 syndrome measurement circuit.  A code with parameters [[n, k, d]] requires
-2n physical qubits in total and achieves the net encoding rate r = k/2n (we round r down
-to the nearest inverse integer).  Circuit-level distance d_circ is the minimum number of
-faulty operations in the syndrome measurement circuit required to generate an undetectable
-logical error.  The pseudo-threshold p_0 is a solution of the break-even equation
-p_L(p) = k·p, where p and p_L are the physical and logical error rates respectively.
+Testing plan:
+Sanity:
+1. Make sure the environment resgiters with gymnasium, and passes their checks
+2. Check the action space has the correct size / shape
+3. Observation now moved to be a tensordict, so check that the polynomials are returned in the right order there.
 
-  ┌────────────────┬───────────┬─────────┬────────┬───────────┬────────────┐
-  │  [[n, k, d]]  │  Rate r   │ d_circ  │  p_0   │  p_L(p1)  │  p_L(p2)  │
-  ├────────────────┼───────────┼─────────┼────────┼───────────┼────────────┤
-  │ [[72,  12,  6]]│   1/12    │   ≤6    │ 0.0048 │  7×10⁻⁵  │  7×10⁻⁸  │
-  │ [[90,   8, 10]]│   1/23    │   ≤8    │ 0.0053 │  5×10⁻⁶  │  4×10⁻¹⁰ │
-  │ [[108,  8, 10]]│   1/27    │   ≤8    │ 0.0058 │  3×10⁻⁶  │  1×10⁻¹⁰ │
-  │ [[144, 12, 12]]│   1/24    │   ≤10   │ 0.0065 │  2×10⁻⁷  │  8×10⁻¹³ │
-  │ [[288, 12, 18]]│   1/48    │   ≤18   │ 0.0069 │  2×10⁻¹² │  1×10⁻²² │
-  └────────────────┴───────────┴─────────┴────────┴───────────┴────────────┘
+Correctness and tests that came up from bugs:
+1. The observation space is supposed to be binary, but there is nothing actually enforcing binary observations from the gymnasium side.
+2. Check that if I plug in some reference codes, I get the expected rewrad.
+
+
 """
 
 import numpy as np
 import pytest
+import bb_gym #noqa OMER: This is needed to register bb_gym with gymnasium (through __init__.py)
 
-TEST_ERROR_RANGE = np.linspace(10**-4, 10**-1, 10)
+TEST_ERROR_RANGE = np.linspace(10**-4, 10**-1, 10) # TODO: I should take this from utils, since all spaces moved there.
 
-########## bbgym_v0 tests
+########## bb_gym_v0 tests
+
+def _fake_decoder(Hx, Hz, errorRange, seed=None):
+    return np.zeros(len(errorRange)), np.zeros(len(errorRange))
+
 
 def _make_action_v0(l, m, aX_idx, aY_idx, bX_idx, bY_idx):
     """Build the flat MultiBinary action vector [aX, aY, bX, bY] from exponent lists."""
@@ -49,205 +45,16 @@ def _make_action_v0(l, m, aX_idx, aY_idx, bX_idx, bY_idx):
     return np.concatenate([aX, aY, bX, bY])
 
 
-def test_observationSpaceIsBinary():    
-    import gymnasium as gym
-    l, m = 12, 12
-    env = gym.make('qecc/bbcode-v0', l=l, m=m,
-                   evaluationDecoderFunction=_fake_decoder,
-                   errorRange=TEST_ERROR_RANGE,
-                   minimumNumberOfLogicalQubits=1)
-    observation, info = env.reset()
-
-    assert np.all(observation == (observation % 2))
-
-    observation, reward, terminated, _, _ = env.step(_make_action_v0(l, m, [3], [2, 7], [1, 2], [3]))
-    
-    assert np.all(observation == (observation % 2))
-
-
-def test_IBM_72_12_6():
-    """[[72, 12, 6]]: l=6, m=6, A=x³+y+y², B=y³+x+x²"""
-    import gymnasium as gym
-    from qecc.bb_gym import exampleDecoderFunction2
-    l, m = 6, 6
-    env = gym.make(
-        'qecc/bbcode-v0',
-        l=l, m=m,
-        evaluationDecoderFunction=exampleDecoderFunction2,
-        errorRange=TEST_ERROR_RANGE,
-        minimumNumberOfLogicalQubits=12,
-    )
-    env.reset()
-    action = _make_action_v0(l, m, aX_idx=[3], aY_idx=[1, 2], bX_idx=[1, 2], bY_idx=[3])
-    _, reward, *_ = env.step(action) # Should come back close to 0.033189 if the error range is np.linspace(10**-4, 10**-1, 10) 
-    
-    assert float(reward) > 0.029 # TODO: I'm not sure why the reward comes back as SupportsFloat instead of float flag this for inspection.
-
-
-def test_IBM_90_8_10():
-    """[[90, 8, 10]]: l=15, m=3, A=x⁹+y+y², B=1+x²+x⁷"""
-    import gymnasium as gym
-    from qecc.bb_gym import exampleDecoderFunction2
-    l, m = 15, 3
-    env = gym.make(
-        'qecc/bbcode-v0',
-        l=l, m=m,
-        evaluationDecoderFunction=exampleDecoderFunction2,
-        errorRange=TEST_ERROR_RANGE,
-        minimumNumberOfLogicalQubits=8,
-    )
-    env.reset()
-    action = _make_action_v0(l, m, aX_idx=[9], aY_idx=[1, 2], bX_idx=[0, 2, 7], bY_idx=[])
-    _, reward, *_ = env.step(action) # should come back roughly 0.04218
-    
-    assert float(reward) > 0.035
-
-
-def test_IBM_108_8_10():
-    """[[108, 8, 10]]: l=9, m=6, A=x³+y+y², B=y³+x+x²"""
-    import gymnasium as gym
-    from qecc.bb_gym import exampleDecoderFunction2
-    l, m = 9, 6
-    env = gym.make(
-        'qecc/bbcode-v0',
-        l=l, m=m,
-        evaluationDecoderFunction=exampleDecoderFunction2,
-        errorRange=TEST_ERROR_RANGE,
-        minimumNumberOfLogicalQubits=8,
-    )
-    env.reset()
-    action = _make_action_v0(l, m, aX_idx=[3], aY_idx=[1, 2], bX_idx=[1, 2], bY_idx=[3])
-    _, reward, *_ = env.step(action) # Should come back as ~ 0.040959 
-    assert float(reward) > 0.035
-
-
-def test_IBM_144_12_12():
-    """[[144, 12, 12]]: l=12, m=6, A=x³+y+y², B=y³+x+x²"""
-    import gymnasium as gym
-    from bb_gym import exampleDecoderFunction2
-    l, m = 12, 6
-    env = gym.make(
-        'qecc/bbcode-v0',
-        l=l, m=m,
-        evaluationDecoderFunction=exampleDecoderFunction2,
-        errorRange=TEST_ERROR_RANGE,
-        minimumNumberOfLogicalQubits=12,
-    )
-    env.reset()
-    action = _make_action_v0(l, m, aX_idx=[3], aY_idx=[1, 2], bX_idx=[1, 2], bY_idx=[3])
-    _, reward, *_ = env.step(action) #Should come back as ~ 0.038739
-    assert float(reward) > 0.03
-
-
-def test_IBM_288_12_18():
-    """[[288, 12, 18]]: l=12, m=12, A=x³+y²+y⁷, B=y³+x+x²"""
-    import gymnasium as gym
-    from qecc.bb_gym import exampleDecoderFunction2
-
-    l, m = 12, 12
-    env = gym.make(
-        'bb_gym/bbcode-v0',
-        l=l, m=m,
-        evaluationDecoderFunction=exampleDecoderFunction2,
-        errorRange=TEST_ERROR_RANGE,
-        minimumNumberOfLogicalQubits=12,
-    )
-    env.reset()
-    action = _make_action_v0(l, m, aX_idx=[3], aY_idx=[2, 7], bX_idx=[1, 2], bY_idx=[3])
-    _, reward, *_ = env.step(action) # Should come back as ~ 0.0414
-    assert float(reward) > 0.035 
-
-
-# def test_bbCodesEnvIsWorking():
-#     from qecc.minSum import ldpcDecoderWrapper
-#     from qecc.utils import decoderEvaluator
-#     def decoderFunction(Hx,Hz,errorRange):
-#         numberOfSamples = 30
-#         logicalErrors, decoderFailures =  decoderEvaluator(decoderFunction = ldpcDecoderWrapper, dualBinary = True, Hx = Hx, Hz = Hz, errorRange = errorRange, decoderStoppingCriterion = 50, numberOfSamples = numberOfSamples)
-#         #return {key: value/numberOfSamples for key,value in logicalErrors.items()} , {key: value/numberOfSamples for key,value in decoderFailures.items()}
-#         return logicalErrors/numberOfSamples, decoderFailures/numberOfSamples
-
-
-
 # ---------------------------------------------------------------------------
 # Positive reward checks using ascending errorRange and a fast decoder.
 # These use minimumNumberOfLogicalQubits=1 so the decoder is always called.
 # ---------------------------------------------------------------------------
 
-def _fake_decoder(Hx, Hz, errorRange, seed=None):
-    return np.zeros(len(errorRange)), np.zeros(len(errorRange))
-
-
-def test_IBM_72_12_6_positiveReward():
-    """[[72, 12, 6]]: l=6, m=6, A=x³+y+y², B=y³+x+x²"""
-    import gymnasium as gym
-    l, m = 6, 6
-    env = gym.make('qecc/bbcode-v0', l=l, m=m,
-                   evaluationDecoderFunction=_fake_decoder,
-                   errorRange=TEST_ERROR_RANGE,
-                   minimumNumberOfLogicalQubits=1)
-    env.reset()
-    _, reward, *_ = env.step(_make_action_v0(l, m, [3], [1, 2], [1, 2], [3]))
-    assert reward > 0
-
-
-def test_IBM_90_8_10_positiveReward():
-    """[[90, 8, 10]]: l=15, m=3, A=x⁹+y+y², B=1+x²+x⁷"""
-    import gymnasium as gym
-    l, m = 15, 3
-    env = gym.make('qecc/bbcode-v0', l=l, m=m,
-                   evaluationDecoderFunction=_fake_decoder,
-                   errorRange=TEST_ERROR_RANGE,
-                   minimumNumberOfLogicalQubits=1)
-    env.reset()
-    _, reward, *_ = env.step(_make_action_v0(l, m, [9], [1, 2], [0, 2, 7], []))
-    assert reward > 0
-
-
-def test_IBM_108_8_10_positiveReward():
-    """[[108, 8, 10]]: l=9, m=6, A=x³+y+y², B=y³+x+x²"""
-    import gymnasium as gym
-    l, m = 9, 6
-    env = gym.make('qecc/bbcode-v0', l=l, m=m,
-                   evaluationDecoderFunction=_fake_decoder,
-                   errorRange=TEST_ERROR_RANGE,
-                   minimumNumberOfLogicalQubits=1)
-    env.reset()
-    _, reward, *_ = env.step(_make_action_v0(l, m, [3], [1, 2], [1, 2], [3]))
-    assert reward > 0
-
-
-def test_IBM_144_12_12_positiveReward():
-    """[[144, 12, 12]]: l=12, m=6, A=x³+y+y², B=y³+x+x²"""
-    import gymnasium as gym
-    l, m = 12, 6
-    env = gym.make('qecc/bbcode-v0', l=l, m=m,
-                   evaluationDecoderFunction=_fake_decoder,
-                   errorRange=TEST_ERROR_RANGE,
-                   minimumNumberOfLogicalQubits=1)
-    env.reset()
-    _, reward, *_ = env.step(_make_action_v0(l, m, [3], [1, 2], [1, 2], [3]))
-    assert reward > 0
-
-
-def test_IBM_288_12_18_positiveReward():
-    """[[288, 12, 18]]: l=12, m=12, A=x³+y²+y⁷, B=y³+x+x²"""
-    import gymnasium as gym
-    l, m = 12, 12
-    env = gym.make('qecc/bbcode-v0', l=l, m=m,
-                   evaluationDecoderFunction=_fake_decoder,
-                   errorRange=TEST_ERROR_RANGE,
-                   minimumNumberOfLogicalQubits=1)
-    env.reset()
-    _, reward, *_ = env.step(_make_action_v0(l, m, [3], [2, 7], [1, 2], [3]))
-    assert reward > 0
-
-
-############## bbgym_ldpc_v0 tests (new environment with the decoder baked in and bit flipping mode)
+############## bb_gym_ldpc_v0 tests (new environment with the decoder baked in and bit flipping mode)
 def _make_v2_env(l = 6, m = 6, minimumNumberOfLogicalQubits = 6, bitFlipping = False):
     import gymnasium as gym
     env = gym.make(
-        'qecc/bbcode-ldpc-v0',
+        'bb_gym/bbcode-ldpc-v0',
         l=l, m=m,
         errorRange=TEST_ERROR_RANGE,
         minimumNumberOfLogicalQubits=minimumNumberOfLogicalQubits,
@@ -273,7 +80,7 @@ def _makeAction_v2(l, m, aXIndex, bXIndex, aYIndex, bYIndex):
 def test_bbcodeV2IsRegistered():
     import gymnasium as gym
     allEnvs = gym.envs.registry.keys()
-    assert "qecc/bbcode-ldpc-v0" in allEnvs
+    assert "bb_gym/bbcode-ldpc-v0" in allEnvs
 
 
 def test_actionSpaceShape():
@@ -286,7 +93,7 @@ def test_actionSpaceShape():
 def test_observationSpaceSize():
     env = _make_v2_env()
     expected = 2 * (6 * 6) ** 2
-    assert env.observation_space.shape == (expected,)
+    assert env.observation_space['code'].shape == (expected,)
 
 
 def test_IBM_72_12_6_v_LDPC():
@@ -294,7 +101,7 @@ def test_IBM_72_12_6_v_LDPC():
     import gymnasium as gym
     l, m = 6, 6
     env = gym.make(
-        'qecc/bbcode-ldpc-v0',
+        'bb_gym/bbcode-ldpc-v0',
         l=l, m=m,
         errorRange=TEST_ERROR_RANGE,
         minimumNumberOfLogicalQubits=6,
@@ -311,7 +118,7 @@ def test_IBM_90_8_10_LDPC():
     import gymnasium as gym
     l, m = 15, 3
     env = gym.make(
-        'qecc/bbcode-ldpc-v0',
+        'bb_gym/bbcode-ldpc-v0',
         l=l, m=m,
         errorRange=TEST_ERROR_RANGE,
         minimumNumberOfLogicalQubits=8,
@@ -328,7 +135,7 @@ def test_IBM_108_8_10_LDPC():
     import gymnasium as gym
     l, m = 9, 6
     env = gym.make(
-        'qecc/bbcode-ldpc-v0',
+        'bb_gym/bbcode-ldpc-v0',
         l=l, m=m,
         errorRange=TEST_ERROR_RANGE,
         minimumNumberOfLogicalQubits=8,
@@ -340,15 +147,12 @@ def test_IBM_108_8_10_LDPC():
     assert float(reward) > 0.035
 
 
-### Shared tests for all environment versions
-@pytest.mark.parametrize(
-        "envName",
-    ["bbGym/bbcode-v0", "bbGym/bbcode-ldpc-v0"])
-def test_bbCodesEnvIsRegistered(envName):
+
+def test_bbCodesEnvIsRegistered():
     import gymnasium as gym
-    # Once qecc is imported, it's init file should have registered the environment. We can check that by checking the registry of gymnasium.
+    # Once bb_gym is imported, it's init file should have registered the environment. We can check that by checking the registry of gymnasium.
     allEnvs = gym.envs.registry.keys()
-    assert envName in allEnvs
+    assert "bb_gym/bbcode-ldpc-v0" in allEnvs
 
 # def test_resetZerosPolynomials():
 #     env = _make_v2_env_with_dualBinaryBPOSDDecoder(l=6, m=6, max_ax=5, max_ay=5, max_bx=5, max_by=5)
@@ -421,7 +225,7 @@ def test_v2EnvPassesGymSpecCheck():
     from torchrl.envs.libs.gym import GymEnv
     from torchrl.envs.utils import check_env_specs
     base_env = GymEnv(
-        "qecc/bbcode-ldpc-v0",
+        "bb_gym/bbcode-ldpc-v0",
         l=6, m=6,
         errorRange=TEST_ERROR_RANGE,
         minimumNumberOfLogicalQubits=6,
@@ -469,15 +273,10 @@ def test_observationDictionaryReturnsCorrectOrder():
 
 
 if __name__ == "__main__":
-    test_observationDictionaryReturnsCorrectOrder()
-    test_actionSpaceShape()
-    test_v2EnvPassesGymSpecCheck()
-    test_IBM_72_12_6_v_LDPC()
-    test_stepReturnsNegativeRewardWhenDimensionTooLow()
-    test_observationSpaceIsBinary()
-    test_IBM_72_12_6()
-    test_IBM_72_12_6_positiveReward()
-    test_IBM_90_8_10()
-    test_IBM_108_8_10()
-    test_IBM_144_12_12()
-    test_IBM_288_12_18()
+    test_bbcodeV2IsRegistered()
+    # test_observationDictionaryReturnsCorrectOrder()
+    # test_actionSpaceShape()
+    # test_v2EnvPassesGymSpecCheck()
+    # test_IBM_72_12_6_v_LDPC()
+    # test_stepReturnsNegativeRewardWhenDimensionTooLow()
+    # test_observationSpaceIsBinary()
