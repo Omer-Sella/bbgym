@@ -1,0 +1,117 @@
+
+# This workflow will install Python dependencies, run tests and lint with a single version of Python
+# For more information see: https://docs.github.com/en/actions/automating-builds-and-tests/building-and-testing-python
+
+name: build environment using pip and uv and pytest
+
+on:
+  push:
+    branches: [ "master" ]
+  pull_request:
+    branches: [ "master" ]
+
+permissions:
+  contents: read
+
+jobs:
+  lint:
+    runs-on: windows-latest
+
+    steps:
+    - uses: actions/checkout@v4
+    - name: Set up Python 3.13.5
+      uses: actions/setup-python@v3
+      with:
+        python-version: "3.13.5"
+    - name: Install dependencies
+      run: |
+        python -m pip install --upgrade pip
+        pip install flake8 pytest
+        pip install -r requirements.txt
+    - name: Lint with flake8
+      run: |
+        # stop the build if there are Python syntax errors or undefined names
+        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --extend-ignore=E122,E127
+        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
+        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --extend-ignore=E122,E127
+    - name: Test with pytest
+      run: |
+        pytest
+
+  uv:
+    name: uv / ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.13"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: astral-sh/setup-uv@v10.2.0 # setup-uv no longer publishes a floating v10 tag
+        with:
+          python-version: ${{ matrix.python-version }}
+      - name: Build sdist and wheel with uv
+        run: uv build
+      - name: The wheel must contain the package
+        run: |
+          uv run --no-project python - <<'EOF'
+          import glob, zipfile
+          (wheel,) = glob.glob("dist/*.whl")
+          names = zipfile.ZipFile(wheel).namelist()
+          assert "bb_gym/__init__.py" in names, f"{wheel} contains no package code: {names}"
+          print(wheel, "->", len(names), "files")
+          EOF
+      - name: Install the locked dependencies, then the built wheel
+        run: |
+          uv sync --locked --no-install-project --extra dev
+          uv pip install --no-deps dist/*.whl
+      # On Windows the log shows "Windows fatal exception: code 0xc0000139"
+      # torchrl 0.13.1's C++ extension does not load against torch 2.10, torchrl falls back to Python,
+      # and pytest's faulthandler prints the handled error.
+      - name: pytest against the installed wheel
+        env:
+          QECC_DATA: ${{ runner.temp }}/qecc-data
+        run: |
+          uv run --no-sync python -c "import bb_gym, torch; assert 'site-packages' in bb_gym.__file__, bb_gym.__file__; assert torch.version.cuda is None, torch.__version__; print(bb_gym.__file__, 'torch', torch.__version__)"
+          uv run --no-sync pytest tests -p no:cacheprovider -ra
+
+  pip:
+    name: pip / ${{ matrix.os }} / Python ${{ matrix.python-version }}
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        os: [ubuntu-latest, windows-latest, macos-latest]
+        python-version: ["3.13"]
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: ${{ matrix.python-version }}
+          cache: pip
+          cache-dependency-path: pyproject.toml
+      - name: Build the wheel with pip
+        run: python -m pip wheel --no-deps --wheel-dir dist .
+      - name: The wheel must contain the package
+        run: |
+          python - <<'EOF'
+          import glob, zipfile
+          (wheel,) = glob.glob("dist/*.whl")
+          names = zipfile.ZipFile(wheel).namelist()
+          assert "bb_gym/__init__.py" in names, f"{wheel} contains no package code: {names}"
+          print(wheel, "->", len(names), "files")
+          EOF
+      - name: Install the built wheel (torch from the CPU index, so Linux skips the CUDA build)
+        run: python -m pip install dist/*.whl pytest --extra-index-url https://download.pytorch.org/whl/cpu
+      # On Windows the log shows "Windows fatal exception: code 0xc0000139" twice. It is harmless:
+      # torchrl 0.13.1's C++ extension does not load against torch 2.10, torchrl falls back to Python,
+      # and pytest's faulthandler prints the handled error. The tests still pass.
+      - name: pytest against the installed wheel
+        env:
+          QECC_DATA: ${{ runner.temp }}/qecc-data
+        run: |
+          python -c "import bb_gym, torch; assert 'site-packages' in bb_gym.__file__, bb_gym.__file__; assert torch.version.cuda is None, torch.__version__; print(bb_gym.__file__, 'torch', torch.__version__)"
+          python -m pytest tests -p no:cacheprovider -ra

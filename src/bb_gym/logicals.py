@@ -1,7 +1,5 @@
 """
-Compute the logical operators of a CSS code given its stabilizer generators.
-Thanks to Dr. Pavel Panteleev for clarifying comments on computing logicals and checking the residual error 
-
+Compute the logical operators of a CSS code given its stabilizer generators in symplectic (dual binary) form.
 """
 from bb_gym import gf2Algebra
 import copy
@@ -43,15 +41,17 @@ def computeLogicals(stabilizerGeneratorsX, stabilizerGeneratorsZ):
     logicalOperatorsX = gf2Algebra.solveHomogenicBinaryLinearSystem(stabilizerGeneratorsZReduced)
     logicalOperatorsZ = gf2Algebra.solveHomogenicBinaryLinearSystem(stabilizerGeneratorsXReduced)
 
-    # Step 3: Pick only the operators that are linearly independant of the stabilisers - this time we are checking the X operators that are linearly independent of the X stabilizers, and Z operators independent of the Z stabilizers. 
+    # Step 3: Pick only the operators that are linearly independent of the stabilisers - this time we are checking the X operators that are linearly independent of the X stabilizers, and Z operators independent of the Z stabilizers. 
+    # TODO: there is a potential speedup here, i.e., test all logical using one Gaussian elimination, or, use multiprocessing to parallelize the rank check.
     newLogicalOperatorsX = []
     for i in range(logicalOperatorsX.shape[0]):
         testMatrix = np.vstack((stabilizerGeneratorsXReduced, logicalOperatorsX[i, :]))
         _, _, testRank = gf2Algebra.binaryGaussianEliminationOnRows(copy.copy(testMatrix))
         if testRank > stabilizerGeneratorsXrank:
             # This row is in the span of the X stabilizers, remove it
-            newLogicalOperatorsX.append(logicalOperatorsX[i,:])
-    
+            newLogicalOperatorsX.append(logicalOperatorsX[i, :])
+
+    # TODO: there is code repetition code reptition code repitiotion here, consider consolidating.
     newLogicalOperatorsZ = []
     for i in range(logicalOperatorsZ.shape[0]):
         testMatrix = np.vstack((stabilizerGeneratorsZReduced, logicalOperatorsZ[i, :]))
@@ -65,8 +65,8 @@ def computeLogicals(stabilizerGeneratorsX, stabilizerGeneratorsZ):
 
 def calculateCodeDimension(Hx, Hz):
     if Hx.shape[1] != Hz.shape[1]:
-        print(f"Column dimensions of Hx and Hz should be the same, instead they are {Hx.shape[1]} and {Hz.shape[1]}.")
-        raise ValueError
+        # print(f"Column dimensions of Hx and Hz should be the same, instead they are {Hx.shape[1]} and {Hz.shape[1]}.")
+        raise ValueError(f"Column dimensions of Hx and Hz should be the same, instead they are {Hx.shape[1]} and {Hz.shape[1]}.")
     else:
         _, _, rankHx = gf2Algebra.binaryGaussianEliminationOnRows(copy.copy(Hx))
         _, _, rankHz = gf2Algebra.binaryGaussianEliminationOnRows(copy.copy(Hz))

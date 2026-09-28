@@ -1,6 +1,12 @@
 """
-This file implements codes from the paper "Degenerate Quantum LDPC Codes With Good Finite Length
+This file hardcodes some quantum codes from the paper "Degenerate Quantum LDPC Codes With Good Finite Length
 Performance" by Pavel Panteleev and Gleb Kalachev
+As well as "Bivariate Bicycle codes from High-threshold and low-overhead fault-tolerant quantum memory"By Bravi et al
+
+Other than providing the reference (published) BB codes, it also provides three functions to generate the parity matrices from the polynomials that define them:
+A,B matrices are generated from polynomials (and two constant matrices)
+H_X, H_Z are generated from A,B
+
 
 For polynomial arithmetic, I used the Reed Solomon code to verify the polynomials given in the paper, but I left it commented 
 https://github.com/Omer-Sella/reedSolomon
@@ -242,5 +248,3 @@ Hx_756_16_34, Hz_756_16_34 = generateBicycleCode(21, 18, aX_756_16_34, aY_756_16
 codes["Hx_756_16_34"] = Hx_756_16_34
 codes["Hz_756_16_34"] = Hz_756_16_34
 bbCodes["756_16_34"] = [Hx_756_16_34, Hz_756_16_34]
-
-

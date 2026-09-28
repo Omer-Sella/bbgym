@@ -3,7 +3,7 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project]
-name = "bbGym"
+name = "bb_gym"
 version = "0.1.0"
 description = "An environment for learning bivariate bicycle codes"
 readme = "README.md"
@@ -30,6 +30,7 @@ plots = ["matplotlib>=3.9"]
 [[tool.uv.index]]
 name = "pytorch-cpu"
 url = "https://download.pytorch.org/whl/cpu"
+explicit = true
 
 [project.urls]
 Repository = "https://github.com/OmerSella/bb-gym"
@@ -39,7 +40,7 @@ Paper = "https://arxiv.org/abs/2608.15754"
 line-length = 100
 
 [tool.hatch.build.targets.wheel]
-packages = ["src/bbGym"]
+packages = ["src/bb_gym"]
 
 [tool.uv.sources]
 torch = { index = "pytorch-cpu" }

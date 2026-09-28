@@ -196,9 +196,9 @@ def decoderEvaluator(decoderFunction, dualBinary, Hx, Hz, errorRange, decoderSto
     decoderFailureRate: array of floats. For each error probability p, the number of times the decoder failed divided by the number of samples attempted for the error probability.
     """
     import numpy as np
-    from qecc.gf4 import integerTraceProduct as tp
-    from qecc.gf4 import integerToDualBinary, binaryDualToInteger
-    from qecc.logicals import computeLogicals
+    from bb_gym.gf4 import integerTraceProduct as tp
+    from bb_gym.gf4 import integerToDualBinary, binaryDualToInteger
+    from bb_gym.logicals import computeLogicals
     if seed is None:
         seed = 7134066
     localRandom = np.random.RandomState(seed)
@@ -273,7 +273,7 @@ if __name__ == "__main__":
     import numpy as np
     import json
     import time
-    SAVE_PATH = "c:/users/omer/qecc/decoderComparisonData/geometric5/" # TODO: I need to get the project top rather than hard code it here.
+    SAVE_PATH = os.environ.get("QECC", ".") # TODO: I need to get the project top rather than hard code it here.
     # numberOfTransmissions = 20
     # seed = 123456
     # errorRange = np.linspace(0.001, 0.1, 10)

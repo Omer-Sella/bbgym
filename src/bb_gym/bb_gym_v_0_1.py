@@ -38,7 +38,7 @@ class bicycleBivariateCodeEnvironment(gym.Env):
                  numberOfIterations = 50,
                  rewardEngineering = False,
                  seed = 0,
-                 codeLogging = True,
+                 codeLogging = False,
                  bitFlipping = False,
                  useDictObservation = True,
                  resetType = "zero",
