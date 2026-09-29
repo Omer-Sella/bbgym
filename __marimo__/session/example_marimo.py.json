@@ -1,0 +1,49 @@
+{
+  "version": "1",
+  "metadata": {
+    "marimo_version": "0.24.2",
+    "script_metadata_hash": null
+  },
+  "cells": [
+    {
+      "id": "Hbol",
+      "code_hash": "6f3eeb8a1ac5f1f3b698fcdd37c89900",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "[0. 0. 0. ... 0. 0. 0.]\nTrue\n(28,)\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    },
+    {
+      "id": "MJUe",
+      "code_hash": "1da7cfbc7083e0feba30fbe048ea2a05",
+      "outputs": [
+        {
+          "type": "data",
+          "data": {
+            "text/plain": ""
+          }
+        }
+      ],
+      "console": [
+        {
+          "type": "stream",
+          "name": "stdout",
+          "text": "An action is a flat concatenation of the per-polynomial actions: [0. 0. 0. 1. 0. 0. 0. 0. 1. 0. 0. 0. 0. 0. 0. 1. 0. 0. 0. 0. 0. 0. 0. 0.\n 1. 0. 0. 0.]\nReward after the first action: -0.3333333333333333.\nThe number of logical qubits for this code was calculated as: 4.0, and the minimum number of logical qubits we initialized the environment is: 6.\nSo the reward will be calculated as 4.0 - 6 / 6 == -0.3333333432674408. Check: True\nReward after the second action: 0.36755922579561745\n",
+          "mimetype": "text/plain"
+        }
+      ]
+    }
+  ]
+}
