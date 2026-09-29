@@ -24,7 +24,7 @@ def test_computeLogicals_4_2_2():
      assert np.all(L_X == L_Z)
      # NOT A BUG !  The 4,2,2 has 2 logical qubits, so why are we getting 3 logical operators ? 
      # The answer is that we compute a spanning set of logicals, but some might differ only by a stabilizer
-     assert L_X.shape == [3, 4]
+     assert L_X.shape == (3, 4)
      
 
 def test_emptySetOfLogicals():
