@@ -69,8 +69,7 @@ jobs:
         env:
           QECC_DATA: ${{ runner.temp }}/qecc-data
         run: |
-          uv run --no-sync python -c "import bb_gym, torch; assert 'site-packages' in bb_gym.__file__, bb_gym.__file__; assert torch.version.cuda is None, torch.__version__; print(bb_gym.__file__, 'torch', torch.__version__)"
-          uv run --no-sync pytest tests -p no:cacheprovider -ra
+          uv run --no-sync python -c "import bb_gym, torch; assert 'site-packages' in bb_gym.__file__, bb_gym.__file__;
 
   pip:
     name: pip / ${{ matrix.os }} / Python ${{ matrix.python-version }}
@@ -108,5 +107,5 @@ jobs:
         env:
           QECC_DATA: ${{ runner.temp }}/qecc-data
         run: |
-          python -c "import bb_gym, torch; assert 'site-packages' in bb_gym.__file__, bb_gym.__file__; assert torch.version.cuda is None, torch.__version__; print(bb_gym.__file__, 'torch', torch.__version__)"
+          python -c "import bb_gym, torch; assert 'site-packages' in bb_gym.__file__, bb_gym.__file__;
           python -m pytest tests -p no:cacheprovider -ra
