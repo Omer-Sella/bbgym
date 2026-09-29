@@ -10,6 +10,8 @@ readme = "README.md"
 requires-python = ">=3.10"
 license = "MIT"
 authors = [{name = "Omer Sella", email = "omer.s.sella@gmail.com"}]
+keywords = ["quantum error correction", "bivariate bicycle codes", "LDPC", "gymnasium", "reinforcement learning"]
+
 dependencies = [
     "numpy>=2.0",
     "scipy>=1.14",
@@ -33,7 +35,7 @@ url = "https://download.pytorch.org/whl/cpu"
 explicit = true
 
 [project.urls]
-Repository = "https://github.com/OmerSella/bb-gym"
+Repository = "https://github.com/OmerSella/bbgym"
 Paper = "https://arxiv.org/abs/2608.15754"
 
 [tool.ruff]
