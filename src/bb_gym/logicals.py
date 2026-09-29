@@ -14,8 +14,8 @@ def computeLogicals(stabilizerGeneratorsX, stabilizerGeneratorsZ):
         stabilizerGeneratorsX (np.ndarray): The X stabilizer generators - not assumed to be in reduced form.
         stabilizerGeneratorsZ (np.ndarray): The Z stabilizer generators - not assumed to be in reduced form.
     Output:
-        logicalOperatorsX (np.ndarray): X logical operators - A spaning list of X logical operators in N(S)\S, which does'nt need to be minimal. 
-        logicalOperatorsZ (np.ndarray): Z logical operators - A spaning list of Z logical operators in N(S)\S, which does'nt need to be minimal. 
+        logicalOperatorsX (np.ndarray): X logical operators - A spaning list of X logical operators in N(S) minus S, which does'nt need to be minimal. 
+        logicalOperatorsZ (np.ndarray): Z logical operators - A spaning list of Z logical operators in N(S) minus S, which does'nt need to be minimal. 
     
     We first reduce all input matrices to their row echelon form.
 

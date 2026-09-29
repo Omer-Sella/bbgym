@@ -19,28 +19,19 @@ defaults:
     
 jobs:
   lint:
-    runs-on: windows-latest
-
+    name: flake8
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
     steps:
-    - uses: actions/checkout@v4
-    - name: Set up Python 3.13.5
-      uses: actions/setup-python@v3
-      with:
-        python-version: "3.13.5"
-    - name: Install dependencies
-      run: |
-        python -m pip install --upgrade pip
-        pip install flake8 pytest
-        pip install -r requirements.txt
-    - name: Lint with flake8
-      run: |
-        # stop the build if there are Python syntax errors or undefined names
-        flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics --extend-ignore=E122,E127
-        # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
-        flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics --extend-ignore=E122,E127
-    - name: Test with pytest
-      run: |
-        pytest
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
+        with:
+          python-version: "3.13"
+      - run: python -m pip install flake8
+      - name: Syntax errors and undefined names (fails the job)
+        run: flake8 src tests --count --select=E9,F63,F7,F82 --show-source --statistics
+      - name: Style report (never fails)
+        run: flake8 src tests --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
 
   uv:
     name: uv / ${{ matrix.os }} / Python ${{ matrix.python-version }}

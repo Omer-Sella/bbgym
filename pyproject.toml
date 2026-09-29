@@ -29,13 +29,9 @@ dependencies = [
 dev = ["pytest>=8", "ruff>=0.6"]
 plots = ["matplotlib>=3.9"]
 
-[[tool.uv.index]]
-name = "pytorch-cpu"
-url = "https://download.pytorch.org/whl/cpu"
-explicit = true
 
 [project.urls]
-Repository = "https://github.com/OmerSella/bbgym"
+Repository = "https://github.com/Omer-Sella/bbgym"
 Paper = "https://arxiv.org/abs/2608.15754"
 
 [tool.ruff]
@@ -43,6 +39,3 @@ line-length = 100
 
 [tool.hatch.build.targets.wheel]
 packages = ["src/bb_gym"]
-
-[tool.uv.sources]
-torch = { index = "pytorch-cpu" }
