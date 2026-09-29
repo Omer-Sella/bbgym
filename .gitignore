@@ -24,8 +24,7 @@ decoderComparisonData*
 .venv
 .pytest_cache
 *.lock
+!uv.lock
 *exe*
-
-
-
+act-history*
 
